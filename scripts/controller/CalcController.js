@@ -1,5 +1,8 @@
 class CalcController{
   constructor(){
+    this._lastOperator = '';
+    this._lastNumber ='';
+
     this._operation = [];
     this._locale = "pt-BR";
     this._displayCalcEl = document.querySelector("#display");
@@ -26,6 +29,9 @@ class CalcController{
 
   clearAll(){
     this._operation = [];
+    this._lastOperator = '';
+    this._lastNumber ='';
+
     this.setLastNumberDisplay();
   }
   clearEntry(){
@@ -33,7 +39,7 @@ class CalcController{
     this.setLastNumberDisplay();
   }
 
-  getOperation(){
+  getLastOperation(){
     return this._operation[this._operation.length-1];
   }
 
@@ -41,18 +47,37 @@ class CalcController{
     return (['+','-','*','/','%'].indexOf(value) > -1);
   }
 
-  setOperation(value){
+  setLastOperation(value){
     this._operation[this._operation.length-1] = value;
   }
 
   setNewValue(value){
-    return this.getOperation().toString() + value.toString();
+    return this.getLastOperation().toString() + value.toString();
+  }
+
+  getResult(){
+    return eval(this._operation.join(""));
   }
 
   calc(){
     let last ='';
-    if(this._operation.length > 3) last = this._operation.pop();
-    let result = eval(this._operation.join(""));
+    let result;
+
+    this._lastOperator = this.getLastItem();
+
+    if(this._operation.length < 3){
+      let firstItem = this._operation[0];
+      this._operation = [firstItem,this._lastOperator,this._lastNumber];
+    }
+
+    if(this._operation.length > 3){
+      last = this._operation.pop();
+      this._lastNumber = this.getResult();
+    }else if(this._operation.length == 3){
+      this._lastNumber = this.getLastItem(false);
+    }
+
+    result = this.getResult();
 
     if(last === '%'){
       result /= 100;
@@ -71,34 +96,35 @@ class CalcController{
     }
   }
 
-  setLastNumberDisplay(){
-    let lastNumber;
+  getLastItem(isOperator = true){
+    let lastItem;
+    
     for (let i = this._operation.length-1; i >= 0; i--) {
-      if(!this.isOperator(this._operation[i])){
-        lastNumber = this._operation[i];
+      if(this.isOperator(this._operation[i]) === isOperator){
+        lastItem = this._operation[i];
         break;
-      }
+      } 
     }
+    if(!lastItem) lastItem = (isOperator) ? this._lastOperator : this._lastNumber;
+    return lastItem;
+  }
+
+  setLastNumberDisplay(){
+    let lastNumber = this.getLastItem(false);
 
     if(!lastNumber) lastNumber = 0;
     this.displayCalc=lastNumber;
   }
 
   addOperation(value){
-    if(isNaN(this.getOperation())){
+    if(isNaN(this.getLastOperation())){
 
       if(this.isOperator(value)){
-        this.setOperation(value);
+        this.setLastOperation(value);
       
-      }else if(isNaN(value)){
-        //this.pushOperation(value);
-        console.log("coisa errada");
       }else{
         this.pushOperation(value);
         this.setLastNumberDisplay();
-        // this.setOperation(2,this.setNewValue(2,this.getOperation()));
-        // this.setOperation(2,parseFloat(this.setNewValue(2,value)));
-        // this.clearEntry();
       }
 
     }else if(this.isOperator(value)){
@@ -108,16 +134,31 @@ class CalcController{
       if(value === '.'){
         this.pushOperation(value);
       }else{
-        this.setOperation(parseInt(this.setNewValue(value)));
+        this.setLastOperation(this.setNewValue(value));
         this.setLastNumberDisplay();
       }
     }
 
-    console.log(this._operation);
+    //log(this._operation);
   }
 
   setError(){
     this.displayCalc = "Error";
+  }
+
+  addDot(){
+    let lastOperation = this.getLastOperation();
+
+    if(typeof lastOperation === 'string' && lastOperation.split('').indexOf('.') > -1) return;
+
+    if(this.isOperator(lastOperation) || !lastOperation){
+      this.pushOperation('0.');
+    }else{
+      this.setLastOperation(lastOperation.toString()+'.');
+    }
+    this.setLastNumberDisplay();
+
+    console.log(lastOperation);
   }
 
   execBtn(value){
@@ -147,7 +188,7 @@ class CalcController{
         this.addOperation('%');
         break;
       case'ponto':
-        this.addOperation('.');
+        this.addDot();
         break;
       case '0':
       case '1':
